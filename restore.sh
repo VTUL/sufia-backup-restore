@@ -16,6 +16,8 @@ SOLR_LOGS="/var/solr/logs"
 TOMCAT_LOGS="/var/log/tomcat7"
 WEB_LOGS="/var/log/nginx"
 RAILS_LOGS="/home/vagrant/data-repo/log"
+REDIS_DIR=$(redis-cli config get dir|tail -1)
+REDIS_DB=$(redis-cli config get dbfilename|tail -1)
 
 if [ $# -ge 1 ]; then
   BACKUP_DIR="$1"
@@ -71,6 +73,12 @@ tar -x -p -z -f "${BACKUP_DIR}/web_logs.tar.gz" -C "$WEB_LOGS" .
 echo "Web logs restored from ${BACKUP_DIR}/web_logs.tar.gz"
 tar -x -p -z -f "${BACKUP_DIR}/rails_logs.tar.gz" -C "$RAILS_LOGS" .
 echo "Rails logs restored from ${BACKUP_DIR}/rails_logs.tar.gz"
+
+# Restore Redis queue
+service redis-server stop
+tar -x -p -z -f "${BACKUP_DIR}/redis_queue.tar.gz" -C "$REDIS_DIR"
+echo "Redis queue restored from ${BACKUP_DIR}/redis_queue.tar.gz"
+service redis-server restart
 
 # Clean any caches
 cd "$APP_DIR"
