@@ -14,6 +14,8 @@ SOLR_LOGS="/var/solr/logs"
 TOMCAT_LOGS="/var/log/tomcat7"
 WEB_LOGS="/var/log/nginx"
 RAILS_LOGS="/home/vagrant/data-repo/log"
+REDIS_DIR=$(redis-cli config get dir|tail -1)
+REDIS_DB=$(redis-cli config get dbfilename|tail -1)
 
 # Shut down services to quiesce them
 echo "Stopping VTechData services..."
@@ -68,6 +70,11 @@ tar -c -z -f "${BACKUP_DIR}/web_logs.tar.gz" -C "$WEB_LOGS" .
 echo "Web logs dumped to ${BACKUP_DIR}/web_logs.tar.gz"
 tar -c -z -f "${BACKUP_DIR}/rails_logs.tar.gz" -C "$RAILS_LOGS" .
 echo "Rails logs dumped to ${BACKUP_DIR}/rails_logs.tar.gz"
+
+# Persist and copy Redis queue
+redis-cli save
+tar -c -z -f "${BACKUP_DIR}/redis_queue.tar.gz" -C "$REDIS_DIR" "$REDIS_DB"
+echo "Redis queue dumped to ${BACKUP_DIR}/redis_queue.tar.gz" 
 
 # Start up services again
 echo "Starting VTechData services..."
