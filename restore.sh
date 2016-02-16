@@ -2,7 +2,6 @@
 
 # Restore data backed up for VTechData
 
-BACKUP_ROOT="/home/vagrant/backups"
 APP_USER="vagrant"
 APP_DIR="/home/vagrant/data-repo"
 DB_NAME="datarepo"
@@ -10,6 +9,10 @@ DB_USER="vagrant"
 DB_PASS="changeme"
 DB_HOST="localhost"
 DB_PORT="5432"
+DB_IS_REMOTE="NO"
+DB_ADMIN_USER="postgres"
+DB_ADMIN_DB="postgres"
+DB_ADMIN_PASSWORD="MyAdminPW"
 DB_LOGS="/var/log/postgresql"
 SOLR_DATA="/var/solr/data"
 SOLR_LOGS="/var/solr/logs"
@@ -27,6 +30,18 @@ if [ $# -ge 2 ]; then
   echo -n "Ignoring extra arguments: $@"
 fi
 
+# Validate DB_IS_REMOTE
+case $DB_IS_REMOTE in
+  [Yy][Ee][Ss])
+    DB_IS_REMOTE="YES"
+    echo "Assuming DB is on remote server."
+    ;;
+  *)
+    DB_IS_REMOTE="NO"
+    echo "Assuming DB is local."
+    ;;
+esac
+
 # Shut down services to quiesce them
 echo "Stopping VTechData services..."
 service nginx stop
@@ -36,20 +51,30 @@ service resque-pool stop
 
 echo "VTechData services stopped."
 
-# Set up .pgpass file for pg_dump
-PGPASSFILE=$(mktemp)
-PGPASS_ENTRY="${DB_HOST}:${DB_PORT}:${DB_NAME}:${DB_USER}:${DB_PASS}"
-echo ${PGPASS_ENTRY} > "$PGPASSFILE"
-chmod 0600 "$PGPASSFILE"
-
 # Restore SQL database and logs
-sudo -i -u postgres dropdb --if-exists $DB_NAME
-sudo -i -u postgres dropuser --if-exists $DB_USER
-sudo -i -u postgres psql -c "CREATE USER ${DB_USER} WITH PASSWORD '${DB_PASS}';"
-sudo -i -u postgres psql -c "CREATE DATABASE ${DB_NAME} WITH OWNER ${DB_USER} ENCODING 'UTF8';"
-sudo -i -u postgres PGPASSFILE="$PGPASSFILE" pg_restore -Fc -d $DB_NAME "${BACKUP_DIR}/pgsqldb.dump"
+if [ "$DB_IS_REMOTE" = "YES" ]; then
+  # Set up .pgpass file for remote commands
+  PGPASSFILE=$(mktemp)
+  echo "${DB_HOST}:${DB_PORT}:${DB_NAME}:${DB_ADMIN_USER}:${DB_ADMIN_PASSWORD}" > "$PGPASSFILE"
+  echo "${DB_HOST}:${DB_PORT}:${DB_ADMIN_DB}:${DB_ADMIN_USER}:${DB_ADMIN_PASSWORD}" >> "$PGPASSFILE"
+  chmod 0600 "$PGPASSFILE"
+  export PGHOST=$DB_HOST
+  export PGPORT=$DB_PORT
+  export PGUSER=$DB_ADMIN_USER
+  export PGDATABASE=$DB_ADMIN_DB
+  export PGPASSFILE
+  psql -c "DROP DATABASE IF EXISTS ${DB_NAME};"
+  psql -c "DROP USER IF EXISTS ${DB_USER};"
+  psql -c "CREATE USER ${DB_USER} WITH PASSWORD '${DB_PASS}';"
+  pg_restore -C -d $DB_ADMIN_DB "${BACKUP_DIR}/pgsqldb.dump"
+  rm "$PGPASSFILE"
+else
+  sudo -u postgres dropdb --if-exists -e $DB_NAME
+  sudo -u postgres dropuser --if-exists -e $DB_USER
+  sudo -u postgres psql -c "CREATE USER ${DB_USER} WITH PASSWORD '${DB_PASS}';"
+  sudo -u postgres pg_restore -C -d postgres "${BACKUP_DIR}/pgsqldb.dump"
+fi
 echo "DB restored from ${BACKUP_DIR}/pgsqldb.dump"
-rm "$PGPASSFILE"
 tar -x -p -z -f "${BACKUP_DIR}/db_logs.tar.gz" -C "$DB_LOGS" .
 echo "DB logs restored from ${BACKUP_DIR}/db_logs.tar.gz"
 
