@@ -22,12 +22,16 @@ RAILS_LOGS="/home/vagrant/data-repo/log"
 REDIS_DIR=$(redis-cli config get dir|tail -1)
 REDIS_DB=$(redis-cli config get dbfilename|tail -1)
 
+if [ $# -eq 0 ]; then
+  echo "Error: No backup directory specified."
+  exit 1
+fi
 if [ $# -ge 1 ]; then
   BACKUP_DIR="$1"
 fi
 if [ $# -ge 2 ]; then
   shift;
-  echo -n "Ignoring extra arguments: $@"
+  echo "Warning: Ignoring extra arguments: $@"
 fi
 
 # Validate DB_IS_REMOTE
