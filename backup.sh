@@ -17,14 +17,14 @@ RAILS_LOGS="/home/vagrant/data-repo/log"
 REDIS_DIR=$(redis-cli config get dir|tail -1)
 REDIS_DB=$(redis-cli config get dbfilename|tail -1)
 
-# Shut down services to quiesce them
-echo "Stopping VTechData services..."
-service nginx stop
-service solr stop
-service tomcat7 stop
-service resque-pool stop
-
-echo "VTechData services stopped."
+# Set BACKUP_ROOT from command line, if specified
+if [ $# -ge 1 ]; then
+  BACKUP_ROOT="$1"
+fi
+if [ $# -ge 2 ]; then
+  shift;
+  echo "Warning: Ignoring extra arguments: $@"
+fi
 
 # Make backup subdir
 BACKUP_DIR="${BACKUP_ROOT}/backup.$(date +%Y-%m-%d-%H%M%S)"
@@ -33,9 +33,17 @@ if [ -e "${BACKUP_DIR}" ]; then
   exit 1
 else
   mkdir -p "${BACKUP_DIR}"
+  echo "Backup directory $BACKUP_DIR created."
 fi
 
-echo "Backup directory $BACKUP_DIR created."
+# Shut down services to quiesce them
+echo "Stopping VTechData services..."
+service nginx stop
+service solr stop
+service tomcat7 stop
+service resque-pool stop
+
+echo "VTechData services stopped."
 
 # Set up .pgpass file for pg_dump
 PGPASSFILE=$(mktemp)
@@ -74,7 +82,7 @@ echo "Rails logs dumped to ${BACKUP_DIR}/rails_logs.tar.gz"
 # Persist and copy Redis queue
 redis-cli save
 tar -c -z -f "${BACKUP_DIR}/redis_queue.tar.gz" -C "$REDIS_DIR" "$REDIS_DB"
-echo "Redis queue dumped to ${BACKUP_DIR}/redis_queue.tar.gz" 
+echo "Redis queue dumped to ${BACKUP_DIR}/redis_queue.tar.gz"
 
 # Start up services again
 echo "Starting VTechData services..."
