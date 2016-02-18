@@ -73,14 +73,14 @@ if [ "$DB_IS_REMOTE" = "YES" ]; then
   pg_restore -C -d $DB_ADMIN_DB "${BACKUP_DIR}/pgsqldb.dump"
   rm "$PGPASSFILE"
 else
+  tar -x -p -z -f "${BACKUP_DIR}/db_logs.tar.gz" -C "$DB_LOGS" .
+  echo "DB logs restored from ${BACKUP_DIR}/db_logs.tar.gz"
   sudo -u postgres dropdb --if-exists -e $DB_NAME
   sudo -u postgres dropuser --if-exists -e $DB_USER
   sudo -u postgres psql -c "CREATE USER ${DB_USER} WITH PASSWORD '${DB_PASS}';"
   sudo -u postgres pg_restore -C -d postgres "${BACKUP_DIR}/pgsqldb.dump"
 fi
 echo "DB restored from ${BACKUP_DIR}/pgsqldb.dump"
-tar -x -p -z -f "${BACKUP_DIR}/db_logs.tar.gz" -C "$DB_LOGS" .
-echo "DB logs restored from ${BACKUP_DIR}/db_logs.tar.gz"
 
 # Restore Solr core data and logs
 tar -x -p -z -f "${BACKUP_DIR}/solr_data.tar.gz" -C "$SOLR_DATA" .

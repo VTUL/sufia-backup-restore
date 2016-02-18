@@ -8,6 +8,7 @@ DB_USER="vagrant"
 DB_PASS="changeme"
 DB_HOST="localhost"
 DB_PORT="5432"
+DB_IS_REMOTE="NO"
 DB_LOGS="/var/log/postgresql"
 SOLR_DATA="/var/solr/data"
 SOLR_LOGS="/var/solr/logs"
@@ -55,8 +56,10 @@ chmod 0600 "$PGPASSFILE"
 env PGPASSFILE="$PGPASSFILE" pg_dump -Fc -f "${BACKUP_DIR}/pgsqldb.dump" -U $DB_USER -h $DB_HOST -p $DB_PORT $DB_NAME
 echo "DB dumped to ${BACKUP_DIR}/pgsqldb.dump"
 rm "$PGPASSFILE"
-tar -c -z -f "${BACKUP_DIR}/db_logs.tar.gz" -C "$DB_LOGS" .
-echo "DB logs dumped to ${BACKUP_DIR}/db_logs.tar.gz"
+if [ "$DB_IS_REMOTE" = "NO" ]; then
+  tar -c -z -f "${BACKUP_DIR}/db_logs.tar.gz" -C "$DB_LOGS" .
+  echo "DB logs dumped to ${BACKUP_DIR}/db_logs.tar.gz"
+fi
 
 # Copy Solr core data and logs
 tar -c -z -f "${BACKUP_DIR}/solr_data.tar.gz" -C "$SOLR_DATA" .
