@@ -49,9 +49,9 @@ esac
 # Shut down services to quiesce them
 echo "Stopping VTechData services..."
 service nginx stop
+service resque-pool stop
 service solr stop
 service tomcat7 stop
-service resque-pool stop
 
 echo "VTechData services stopped."
 
@@ -115,9 +115,9 @@ sudo -H -u $APP_USER bundle exec rake tmp:clear
 
 # Start up services again
 echo "Starting VTechData services..."
-service resque-pool start
 service tomcat7 start
 service solr start
+service resque-pool start
 service nginx start
 
 echo "VTechData services started."
